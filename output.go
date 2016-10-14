@@ -1,21 +1,22 @@
 package logging
 
 import (
-	"io"
 	"fmt"
+	"io"
 	"os"
 )
 
 type Writer interface {
-	Write(*Record)
+	Write(*Record, int)
 }
 
 type TextWriter struct {
-	dest   io.Writer
-	format Formatter
+	dest    io.Writer
+	format  Formatter
+	NoColor bool
 }
 
-func NewTextWriter(dest io.Writer, format string) (Writer, error) {
+func NewTextWriter(dest io.Writer, format string) (*TextWriter, error) {
 	f, err := PatternFormatter(format)
 	if err != nil {
 		return nil, err
@@ -26,13 +27,13 @@ func NewTextWriter(dest io.Writer, format string) (Writer, error) {
 	}, nil
 }
 
-func (t *TextWriter) Write(rec *Record) {
-	t.dest.Write(t.format.Format(rec))
+func (t *TextWriter) Write(rec *Record, skip int) {
+	t.dest.Write(t.format.Format(rec, t.NoColor, skip+1))
 }
 
 type Stdout struct{}
 
-func (std Stdout) Write(rec *Record) {
+func (std Stdout) Write(rec *Record, skip int) {
 	buf := fmt.Sprintf(rec.Format, rec.Args...)
 	os.Stdout.Write([]byte(buf))
 	os.Stdout.Write([]byte{'\n'})

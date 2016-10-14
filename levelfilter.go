@@ -17,9 +17,9 @@ type LevelFilter struct {
 	target    Writer
 }
 
-func (f *LevelFilter) Write(rec *Record) {
+func (f *LevelFilter) Write(rec *Record, skip int) {
 	if rec.Level <= f.GetLevel(rec.Module) {
-		f.target.Write(rec)
+		f.target.Write(rec, skip+1)
 	}
 }
 
@@ -34,6 +34,7 @@ func (f *LevelFilter) GetLevel(module string) Level {
 	for _, r := range f.rules {
 		match, err := path.Match(r.pattern, module)
 		if err != nil {
+			// fall back to exact matching
 			match = r.pattern == module
 		}
 		if match {

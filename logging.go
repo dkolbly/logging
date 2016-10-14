@@ -2,9 +2,7 @@ package logging
 
 import (
 	"context"
-	//"fmt"
-	//"io"
-	//"os"
+	"sync/atomic"
 	"time"
 )
 
@@ -23,7 +21,7 @@ func New(module string) *Logger {
 
 func (l *Logger) To(wr ...Writer) *Logger {
 	return &Logger{
-		module: l.module,
+		module:  l.module,
 		outputs: wr,
 	}
 }
@@ -33,11 +31,10 @@ func (l *Logger) Tee(wr Writer) *Logger {
 	copy(o[1:], l.outputs)
 	o[0] = wr
 	return &Logger{
-		module: l.module,
+		module:  l.module,
 		outputs: o,
 	}
 }
-
 
 /*
 type Tee struct {
@@ -86,31 +83,37 @@ func (l *Logger) dispatch(rec *Record) {
 }
 */
 
-func (l *Logger) Info(format string, args ...interface{}) {
-	msg := &Record{
+var seq uint64 = 1
+
+func (l *Logger) dispatch(format string, args []interface{}, v Level, s int) {
+	rec := &Record{
+		ID:          atomic.AddUint64(&seq, 1),
 		Module:      l.module,
 		Annotations: l.annot,
-		Level:       INFO,
+		Level:       v,
 		Timestamp:   time.Now(),
 		Format:      format,
 		Args:        args,
 	}
-	l.dispatch(msg)
-}
-
-func (l *Logger) dispatch(rec *Record) {
 	for _, wr := range l.outputs {
-		wr.Write(rec)
+		wr.Write(rec, s+1)
 	}
 }
 
 type logger int
-const CurrentLogger = logger(0)
+
+const CurrentLoggerKey = logger(0)
 
 func (l *Logger) In(ctx context.Context) context.Context {
-	return context.WithValue(ctx, CurrentLogger, l)
+	return context.WithValue(ctx, CurrentLoggerKey, l)
 }
 
 func In(ctx context.Context) *Logger {
-	return ctx.Value(CurrentLogger).(*Logger)
+	return ctx.Value(CurrentLoggerKey).(*Logger)
 }
+
+func (l *Logger) Info(format string, args ...interface{}) {
+	// this 2 accounts for our depth and theirs
+	l.dispatch(format, args, INFO, 2)
+}
+

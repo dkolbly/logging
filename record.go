@@ -1,17 +1,57 @@
 package logging
 
 import (
+	"encoding/json"
+	"runtime"
+	"fmt"
 	"time"
 )
 
 type Record struct {
-	Id uint64
-	Module      string
-	Level       Level
-	Annotations map[string]interface{}
-	Timestamp   time.Time
-	Format      string
-	Args        []interface{}
+	ID          uint64                 `json:"id"`
+	Module      string                 `json:"module"`
+	Level       Level                  `json:"level"`
+	Timestamp   time.Time              `json:"timestamp"`
+	Format      string                 `json:"format"`
+	Args        []interface{}          `json:"args"`
+	Annotations map[string]interface{} `json:"annotations,omitempty"`
+}
+
+type formattedRecord struct {
+	Record
+	/*	Id          uint64                 `json:"id"`
+		Module      string                 `json:"module"`
+		Level       Level                  `json:"level"`
+		Timestamp   time.Time              `json:"timestamp"`
+		Format      string                 `json:"format"`
+		Args        []interface{}          `json:"args"`
+		Annotations map[string]interface{} `json:"annotations,omitempty"`
+	*/
+	Message string `json:"message"`
+	File    string `json:"file"`
+	Line    int    `json:"line"`
+}
+
+func (r *Record) JSON(skip int) ([]byte, error) {
+	fr := &formattedRecord{
+		Record: *r,
+		/*
+			Id:          r.Id,
+			Module:      r.Module,
+			Level:       r.Level,
+			Timestamp:   r.Timestamp,
+			Format:      r.Format,
+			Args:        r.Args,
+			Annotations: r.Annotations,
+		*/
+		Message: fmt.Sprintf(r.Format, r.Args...),
+	}
+	_, file, line, ok := runtime.Caller(skip)
+	if ok {
+		fr.File = file
+		fr.Line = line
+	}
+	return json.Marshal(fr)
 }
 
 // Level is a small integer (0-7) that identifies the severity or
