@@ -22,12 +22,31 @@ func main() {
 	blech(log.Re(proc("carol")).In(bg), false)
 	blech(log.Re(proc("carol")).In(bg), true)
 	blech(log.Re(proc("carol")).In(bg), false)
+
+	f1 := logging.MustPatternFormatter("aaa--- %{message} NO TAGS\n")
+	f2 := logging.MustPatternFormatter("bbb--- %{message} TAGS: PROC=%{annot/proc}\n")
+	f3 := logging.MustPatternFormatter("ccc--- %{leftmargin}%{message}\nTAGS: %{annot/slub:-}%{color:=#r}SLUB%{/color}\n")
+		
+	mflog := log.To(logging.NewTextWriterUsing(
+		os.Stdout,
+		logging.NewMultiFormat(f1, f2, f3)))
+	mflog.Info("Hello")
+	mflog.Re(proc("alice")).Info("Hi!")
+	mflog.Re(proc("alice")).Re(slub("xxx")).Info("Hi!")
+	mflog.Re(slub("Xxx")).Re(proc("Alice")).Info("Hiyo!")
+	mflog.Re(slub("Xxx")).Info("slub only...")
 }
 
 type proc string
 
 func (p proc) Annotate(rec *logging.Record) {
 	rec.Annotate("proc", string(p))
+}
+
+type slub string
+
+func (p slub) Annotate(rec *logging.Record) {
+	rec.Annotate("slub", string(p))
 }
 
 func foo(ctx context.Context) {

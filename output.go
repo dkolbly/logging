@@ -24,7 +24,14 @@ func MustTextWriter(dest io.Writer, format string) *TextWriter {
 	return tw
 }
 
-	
+func NewTextWriterUsing(dest io.Writer, f Formatter) *TextWriter {
+	return &TextWriter{
+		dest: dest,
+		format: f,
+	}
+}
+
+
 func NewTextWriter(dest io.Writer, format string) (*TextWriter, error) {
 	f, err := PatternFormatter(format)
 	if err != nil {

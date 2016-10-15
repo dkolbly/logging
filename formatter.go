@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"strings"
 	"bytes"
 	"fmt"
 	"path"
@@ -18,7 +19,7 @@ type outputContext struct {
 	stackSkip  int
 	leftMargin int
 	column     int
-	bol bool
+	bol        bool
 }
 
 func (ctx *outputContext) WriteString(s string) (int, error) {
@@ -65,6 +66,18 @@ func literal(lit string) fragmentFormatter {
 type LegacyPatternFormatter struct {
 	fragments        []fragmentFormatter
 	nocolorFragments []fragmentFormatter
+	requireAnnots    []string
+}
+
+func (pf *LegacyPatternFormatter) Match(rec *Record) bool {
+	// check to see if all the annotations we want are here
+	for _, a := range pf.requireAnnots {
+		if _, ok := rec.Annotations[a]; !ok {
+			// oops, missing one!
+			return false
+		}
+	}
+	return true
 }
 
 func (pf *LegacyPatternFormatter) Format(r *Record, nocolor bool, skip int) []byte {
@@ -82,7 +95,7 @@ func (pf *LegacyPatternFormatter) Format(r *Record, nocolor bool, skip int) []by
 	return ctx.dst.Bytes()
 }
 
-func MustPatternFormatter(pat string) Formatter {
+func MustPatternFormatter(pat string) *LegacyPatternFormatter {
 	f, err := PatternFormatter(pat)
 	if err != nil {
 		panic(err)
@@ -90,24 +103,25 @@ func MustPatternFormatter(pat string) Formatter {
 	return f
 }
 
-func PatternFormatter(pat string) (Formatter, error) {
-	frags, ncfrags, err := compilePattern(pat)
+func PatternFormatter(pat string) (*LegacyPatternFormatter, error) {
+	frags, ncfrags, use, err := compilePattern(pat)
 	if err != nil {
 		return nil, err
 	}
 	return &LegacyPatternFormatter{
 		fragments:        frags,
 		nocolorFragments: ncfrags,
+		requireAnnots:    use,
 	}, nil
 }
 
 var formatRe *regexp.Regexp = regexp.MustCompile(`%{([a-z/]+)(?::(.*?[^\\]))?}`)
 
-func compilePattern(pat string) ([]fragmentFormatter, []fragmentFormatter, error) {
+func compilePattern(pat string) ([]fragmentFormatter, []fragmentFormatter, []string, error) {
 	// Find all the %{...} pieces
 	matches := formatRe.FindAllStringSubmatchIndex(pat, -1)
 	if matches == nil {
-		return nil, nil, fmt.Errorf("logger: invalid log format: %q", pat)
+		return nil, nil, nil, fmt.Errorf("logger: invalid log format: %q", pat)
 	}
 
 	var frags []fragmentFormatter
@@ -121,6 +135,7 @@ func compilePattern(pat string) ([]fragmentFormatter, []fragmentFormatter, error
 	}
 
 	prev := 0
+	require := []string{}
 	for _, m := range matches {
 		start, end := m[0], m[1]
 		if start > prev {
@@ -131,13 +146,22 @@ func compilePattern(pat string) ([]fragmentFormatter, []fragmentFormatter, error
 		if m[4] != -1 {
 			layout = pat[m[4]:m[5]]
 		}
-		fragMaker, ok := verbTable[verb]
-		if !ok {
-			return nil, nil, fmt.Errorf("logger: unknown verb %q in %q", verb, pat)
-		}
-		frag, err := fragMaker(layout)
-		if err != nil {
-			return nil, nil, err
+		var frag fragmentFormatter
+		var err error
+		
+		if strings.HasPrefix(verb, "annot/") {
+			annot := verb[6:]
+			frag = makeAnnotFrag(annot, layout)
+			require = append(require, annot)
+		} else {
+			fragMaker, ok := verbTable[verb]
+			if !ok {
+				return nil, nil, nil, fmt.Errorf("logger: unknown verb %q in %q", verb, pat)
+			}
+			frag, err = fragMaker(layout)
+			if err != nil {
+				return nil, nil, nil, err
+			}
 		}
 		push(frag, colorTable[verb])
 		prev = end
@@ -145,7 +169,7 @@ func compilePattern(pat string) ([]fragmentFormatter, []fragmentFormatter, error
 	if prev < len(pat) {
 		push(literal(pat[prev:]), false)
 	}
-	return frags, nocolorFrags, nil
+	return frags, nocolorFrags, require, nil
 }
 
 type fragMaker func(string) (fragmentFormatter, error)
@@ -264,3 +288,26 @@ func makeMessageFrag(options string) (fragmentFormatter, error) {
 		fmt.Fprintf(ctx, options, str)
 	}, nil
 }
+
+func makeAnnotFrag(annot, options string) fragmentFormatter {
+	// allow the output to be completely suppressed with %{annot/foo:-},
+	// in which case the tag is only used for format message selection.
+	// it's basically equivalent to using ".0s" but more efficient and
+	// easier to understand
+	if options == "-" {
+		return func(ctx *outputContext) {}
+	}
+
+	if options == "" {
+		options = "%s"
+	} else {
+		options = "%" + options
+	}
+	
+	return func(ctx *outputContext) {
+		if value, ok := ctx.src.Annotations[annot]; ok {
+			fmt.Fprintf(ctx, options, value)
+		}
+	}
+}
+
