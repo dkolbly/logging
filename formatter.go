@@ -12,17 +12,27 @@ type Formatter interface {
 	Format(*Record, bool, int) []byte
 }
 
-type fragmentFormatter func(*bytes.Buffer, *Record, int)
+type outputContext struct {
+	dst       bytes.Buffer
+	src       *Record
+	stackSkip int
+}
+
+func (ctx *outputContext) Write(data []byte) (int, error) {
+	return (&ctx.dst).Write(data)
+}
+
+type fragmentFormatter func(*outputContext)
 
 func literals(lit []byte) fragmentFormatter {
-	return func(dst *bytes.Buffer, src *Record, _ int) {
-		dst.Write(lit)
+	return func(ctx *outputContext) {
+		ctx.dst.Write(lit)
 	}
 }
 
 func literal(lit string) fragmentFormatter {
-	return func(dst *bytes.Buffer, src *Record, _ int) {
-		dst.WriteString(lit)
+	return func(ctx *outputContext) {
+		ctx.dst.WriteString(lit)
 	}
 }
 
@@ -32,15 +42,18 @@ type LegacyPatternFormatter struct {
 }
 
 func (pf *LegacyPatternFormatter) Format(r *Record, nocolor bool, skip int) []byte {
-	buf := &bytes.Buffer{}
+	ctx := &outputContext{
+		src:       r,
+		stackSkip: skip+1,
+	}
 	frags := pf.fragments
 	if nocolor {
 		frags = pf.nocolorFragments
 	}
 	for _, frag := range frags {
-		frag(buf, r, skip+1)
+		frag(ctx)
 	}
-	return buf.Bytes()
+	return ctx.dst.Bytes()
 }
 
 func MustPatternFormatter(pat string) Formatter {
@@ -112,8 +125,8 @@ func compilePattern(pat string) ([]fragmentFormatter, []fragmentFormatter, error
 type fragMaker func(string) (fragmentFormatter, error)
 
 var colorTable = map[string]bool{
-	"color":     true,
-	"/color":    true,
+	"color":  true,
+	"/color": true,
 }
 
 var verbTable = map[string]fragMaker{
@@ -124,7 +137,8 @@ var verbTable = map[string]fragMaker{
 	"module":    makeModuleFrag,
 	"shortfile": makeShortFileFrag,
 	"level":     makeLevelFrag,
-	"id": makeIdFrag,
+	"id":        makeIdFrag,
+	//"leftmargin": makeLeftMarginFrag,
 }
 
 func stringopt(options string) string {
@@ -135,10 +149,16 @@ func stringopt(options string) string {
 	}
 }
 
-func makeModuleFrag(options string) (fragmentFormatter, error) {
-	options = stringopt(options)
+/*func makeLeftMarginFrag(_ string) (fragmentFormatter, error) {
 	return func(dst *bytes.Buffer, src *Record, _ int) {
 		fmt.Fprintf(dst, options, src.Module)
+	}, nil
+}*/
+
+func makeModuleFrag(options string) (fragmentFormatter, error) {
+	options = stringopt(options)
+	return func(ctx *outputContext) {
+		fmt.Fprintf(ctx, options, ctx.src.Module)
 	}, nil
 }
 
@@ -148,9 +168,9 @@ func makeIdFrag(options string) (fragmentFormatter, error) {
 	} else {
 		options = "%" + options
 	}
-	
-	return func(dst *bytes.Buffer, src *Record, _ int) {
-		fmt.Fprintf(dst, options, src.ID)
+
+	return func(ctx *outputContext) {
+		fmt.Fprintf(ctx, options, ctx.src.ID)
 	}, nil
 }
 
@@ -158,22 +178,22 @@ func makeShortFileFrag(options string) (fragmentFormatter, error) {
 	if options == "" {
 		options = "%[1]s:%[2]d"
 	}
-	return func(dst *bytes.Buffer, src *Record, depth int) {
-		_, file, line, ok := runtime.Caller(depth)
+	return func(ctx *outputContext) {
+		_, file, line, ok := runtime.Caller(ctx.stackSkip)
 		if !ok {
 			file = "???"
 			line = 0
 		} else {
 			file = path.Base(file)
 		}
-		fmt.Fprintf(dst, options, file, line)
+		fmt.Fprintf(ctx, options, file, line)
 	}, nil
 }
 
 func makeLevelFrag(options string) (fragmentFormatter, error) {
 	options = stringopt(options)
-	return func(dst *bytes.Buffer, src *Record, _ int) {
-		fmt.Fprintf(dst, options, levelNames[src.Level])
+	return func(ctx *outputContext) {
+		fmt.Fprintf(ctx, options, levelNames[ctx.src.Level])
 	}, nil
 }
 
@@ -201,8 +221,8 @@ func makeTimeFrag(options string) (fragmentFormatter, error) {
 	if options == "" {
 		options = rfc3339Milli
 	}
-	return func(dest *bytes.Buffer, r *Record, _ int) {
-		dest.WriteString(r.Timestamp.Format(options))
+	return func(ctx *outputContext) {
+		ctx.dst.WriteString(ctx.src.Timestamp.Format(options))
 	}, nil
 
 }
@@ -213,8 +233,8 @@ func makeMessageFrag(options string) (fragmentFormatter, error) {
 	} else {
 		options = "%" + options
 	}
-	return func(dest *bytes.Buffer, r *Record, _ int) {
-		str := fmt.Sprintf(r.Format, r.Args...)
-		fmt.Fprintf(dest, options, str)
+	return func(ctx *outputContext) {
+		str := fmt.Sprintf(ctx.src.Format, ctx.src.Args...)
+		fmt.Fprintf(ctx, options, str)
 	}, nil
 }

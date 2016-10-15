@@ -16,6 +16,15 @@ type TextWriter struct {
 	NoColor bool
 }
 
+func MustTextWriter(dest io.Writer, format string) *TextWriter {
+	tw, err := NewTextWriter(dest, format)
+	if err != nil {
+		panic(err)
+	}
+	return tw
+}
+
+	
 func NewTextWriter(dest io.Writer, format string) (*TextWriter, error) {
 	f, err := PatternFormatter(format)
 	if err != nil {

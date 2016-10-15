@@ -2,14 +2,13 @@ package logging
 
 import (
 	"strconv"
-	"bytes"
 	"errors"
 	"fmt"
 	"strings"
 )
 
-func colorResetFrag(dest *bytes.Buffer, r *Record, _ int) {
-	dest.Write([]byte("\033[0m"))
+func colorResetFrag(ctx *outputContext) {
+	ctx.dst.Write([]byte("\033[0m"))
 }
 
 var ErrTooManyColors = errors.New("too many colors mentioned")
@@ -48,8 +47,8 @@ func makeColorFrag(options string) (fragmentFormatter, error) {
 		colors[i] = color
 	}
 
-	return func(dest *bytes.Buffer, r *Record, _ int) {
-		dest.Write(colors[r.Level])
+	return func(ctx *outputContext) {
+		ctx.dst.Write(colors[ctx.src.Level])
 	}, nil
 
 }

@@ -15,7 +15,7 @@ type Logger struct {
 func New(module string) *Logger {
 	return &Logger{
 		module:  module,
-		outputs: []Writer{Stdout{}},
+		outputs: []Writer{DefaultBackend},
 	}
 }
 
