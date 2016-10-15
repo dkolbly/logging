@@ -8,7 +8,14 @@ import (
 )
 
 func colorResetFrag(ctx *outputContext) {
+	// bypass the ctx.Write() layer because we don't want this to
+	// count against our columns
 	ctx.dst.Write([]byte("\033[0m"))
+}
+
+
+func makeColorResetFrag(_ string) (fragmentFormatter, error) {
+	return colorResetFrag, nil
 }
 
 var ErrTooManyColors = errors.New("too many colors mentioned")
@@ -155,8 +162,4 @@ var defaultColorPalette = [8][]byte{
 	NOTICE:    colorSeqBold(colorGreen),
 	INFO:      colorSeq(colorGreen),
 	DEBUG:     colorSeq(colorWhite),
-}
-
-func makeColorResetFrag(_ string) (fragmentFormatter, error) {
-	return colorResetFrag, nil
 }

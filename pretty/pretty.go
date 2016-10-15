@@ -17,7 +17,7 @@ func init() {
 	logging.DefaultBackend.Target = Writer
 }
 
-const DefaultTextFormat = "%{color}%{time:15:04:05.000} %{level:-8s} [%{module}|%{shortfile:%s:%d}]%{/color} %{message}\n"
+const DefaultTextFormat = "%{color}%{time:15:04:05.000} %{level:-8s} [%{module}|%{shortfile:%s:%d}]%{/color} %{leftmargin}%{message}\n"
 
 
 // ForceColor causes coloring to be enabled for the writer owned by

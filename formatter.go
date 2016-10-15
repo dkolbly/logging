@@ -13,26 +13,52 @@ type Formatter interface {
 }
 
 type outputContext struct {
-	dst       bytes.Buffer
-	src       *Record
-	stackSkip int
+	dst        bytes.Buffer
+	src        *Record
+	stackSkip  int
+	leftMargin int
+	column     int
+	bol bool
+}
+
+func (ctx *outputContext) WriteString(s string) (int, error) {
+	return ctx.Write([]byte(s))
 }
 
 func (ctx *outputContext) Write(data []byte) (int, error) {
-	return (&ctx.dst).Write(data)
+	for _, b := range data {
+		if b == '\n' {
+			ctx.dst.WriteByte(b)
+			ctx.bol = true
+		} else {
+			if ctx.bol {
+				for j := 0; j < ctx.leftMargin; j++ {
+					ctx.dst.WriteByte(' ')
+				}
+				ctx.column = ctx.leftMargin
+				ctx.bol = false
+			}
+			ctx.dst.WriteByte(b)
+			ctx.column++
+		}
+	}
+	return len(data), nil
 }
 
 type fragmentFormatter func(*outputContext)
 
+// TODO we can unfold the Write() loop by pre-scanning the literal data
+// and splitting it into lines (and special case the 1-line case, and maybe
+// even the 1 byte case)
 func literals(lit []byte) fragmentFormatter {
 	return func(ctx *outputContext) {
-		ctx.dst.Write(lit)
+		ctx.Write(lit)
 	}
 }
 
 func literal(lit string) fragmentFormatter {
 	return func(ctx *outputContext) {
-		ctx.dst.WriteString(lit)
+		ctx.Write([]byte(lit))
 	}
 }
 
@@ -44,7 +70,7 @@ type LegacyPatternFormatter struct {
 func (pf *LegacyPatternFormatter) Format(r *Record, nocolor bool, skip int) []byte {
 	ctx := &outputContext{
 		src:       r,
-		stackSkip: skip+1,
+		stackSkip: skip + 1,
 	}
 	frags := pf.fragments
 	if nocolor {
@@ -130,15 +156,15 @@ var colorTable = map[string]bool{
 }
 
 var verbTable = map[string]fragMaker{
-	"time":      makeTimeFrag,
-	"message":   makeMessageFrag,
-	"color":     makeColorFrag,
-	"/color":    makeColorResetFrag,
-	"module":    makeModuleFrag,
-	"shortfile": makeShortFileFrag,
-	"level":     makeLevelFrag,
-	"id":        makeIdFrag,
-	//"leftmargin": makeLeftMarginFrag,
+	"time":       makeTimeFrag,
+	"message":    makeMessageFrag,
+	"color":      makeColorFrag,
+	"/color":     makeColorResetFrag,
+	"module":     makeModuleFrag,
+	"shortfile":  makeShortFileFrag,
+	"level":      makeLevelFrag,
+	"id":         makeIdFrag,
+	"leftmargin": makeLeftMarginFrag,
 }
 
 func stringopt(options string) string {
@@ -149,11 +175,11 @@ func stringopt(options string) string {
 	}
 }
 
-/*func makeLeftMarginFrag(_ string) (fragmentFormatter, error) {
-	return func(dst *bytes.Buffer, src *Record, _ int) {
-		fmt.Fprintf(dst, options, src.Module)
+func makeLeftMarginFrag(_ string) (fragmentFormatter, error) {
+	return func(ctx *outputContext) {
+		ctx.leftMargin = ctx.column
 	}, nil
-}*/
+}
 
 func makeModuleFrag(options string) (fragmentFormatter, error) {
 	options = stringopt(options)
@@ -222,7 +248,7 @@ func makeTimeFrag(options string) (fragmentFormatter, error) {
 		options = rfc3339Milli
 	}
 	return func(ctx *outputContext) {
-		ctx.dst.WriteString(ctx.src.Timestamp.Format(options))
+		ctx.WriteString(ctx.src.Timestamp.Format(options))
 	}, nil
 
 }
