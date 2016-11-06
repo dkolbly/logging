@@ -112,8 +112,37 @@ func In(ctx context.Context) *Logger {
 	return ctx.Value(CurrentLoggerKey).(*Logger)
 }
 
+// this 2 accounts for our depth and theirs
+const baseDepth = 2
+
 func (l *Logger) Info(format string, args ...interface{}) {
-	// this 2 accounts for our depth and theirs
-	l.dispatch(format, args, INFO, 2)
+	l.dispatch(format, args, INFO, baseDepth)
 }
 
+func (l *Logger) Debug(format string, args ...interface{}) {
+	l.dispatch(format, args, DEBUG, baseDepth)
+}
+
+func (l *Logger) Error(format string, args ...interface{}) {
+	l.dispatch(format, args, ERROR, baseDepth)
+}
+
+func (l *Logger) Notice(format string, args ...interface{}) {
+	l.dispatch(format, args, NOTICE, baseDepth)
+}
+
+func (l *Logger) Critical(format string, args ...interface{}) {
+	l.dispatch(format, args, CRITICAL, baseDepth)
+}
+
+func (l *Logger) Emergency(format string, args ...interface{}) {
+	l.dispatch(format, args, EMERGENCY, baseDepth)
+}
+
+func (l *Logger) Alert(format string, args ...interface{}) {
+	l.dispatch(format, args, ALERT, baseDepth)
+}
+
+func (l *Logger) Warning(format string, args ...interface{}) {
+	l.dispatch(format, args, WARNING, baseDepth)
+}
