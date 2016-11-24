@@ -26,11 +26,10 @@ func MustTextWriter(dest io.Writer, format string) *TextWriter {
 
 func NewTextWriterUsing(dest io.Writer, f Formatter) *TextWriter {
 	return &TextWriter{
-		dest: dest,
+		dest:   dest,
 		format: f,
 	}
 }
-
 
 func NewTextWriter(dest io.Writer, format string) (*TextWriter, error) {
 	f, err := PatternFormatter(format)

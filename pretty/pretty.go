@@ -10,10 +10,13 @@ import (
 	"github.com/mattn/go-isatty"
 )
 
-var Writer = logging.MustTextWriter(os.Stdout, DefaultTextFormat)
+var TextWriter = logging.MustTextWriter(os.Stdout, DefaultTextFormat)
+var Writer = logging.MustFilter(TextWriter)
+
 func init() {
 	tty := isatty.IsTerminal(os.Stdout.Fd())
-	Writer.NoColor = !tty
+	Writer.SetLevel(logging.INFO, "*")
+	TextWriter.NoColor = !tty
 	logging.DefaultBackend.Target = Writer
 }
 
@@ -23,11 +26,16 @@ const DefaultTextFormat = "%{color}%{time:15:04:05.000} %{level:-8s} [%{module}|
 // ForceColor causes coloring to be enabled for the writer owned by
 // this package.  Useful for implementing a `--color` flag
 func ForceColor() {
-	Writer.NoColor = false
+	TextWriter.NoColor = false
 }
 
 // ForceColor causes coloring to be disabled for the writer owned by
 // this package.  Useful for implementing a `--no-color` flag
 func ForceNoColor() {
-	Writer.NoColor = true
+	TextWriter.NoColor = true
 }
+
+func Debug() {
+	Writer.SetLevel(logging.DEBUG, "*")
+}
+

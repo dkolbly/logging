@@ -1,12 +1,12 @@
 package logging
 
 import (
-	"strings"
 	"bytes"
 	"fmt"
 	"path"
 	"regexp"
 	"runtime"
+	"strings"
 )
 
 type Formatter interface {
@@ -148,7 +148,7 @@ func compilePattern(pat string) ([]fragmentFormatter, []fragmentFormatter, []str
 		}
 		var frag fragmentFormatter
 		var err error
-		
+
 		if strings.HasPrefix(verb, "annot/") {
 			annot := verb[6:]
 			frag = makeAnnotFrag(annot, layout)
@@ -303,11 +303,10 @@ func makeAnnotFrag(annot, options string) fragmentFormatter {
 	} else {
 		options = "%" + options
 	}
-	
+
 	return func(ctx *outputContext) {
 		if value, ok := ctx.src.Annotations[annot]; ok {
 			fmt.Fprintf(ctx, options, value)
 		}
 	}
 }
-

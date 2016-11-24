@@ -17,8 +17,8 @@ func grow(arg map[string]interface{}) map[string]interface{} {
 
 func (l *Logger) Re(a Annotater) *Logger {
 	n := &Logger{
-		module: l.module,
-		annot: grow(l.annot),
+		module:  l.module,
+		annot:   grow(l.annot),
 		outputs: l.outputs,
 	}
 	// now add whatever new annotations we have in mind
@@ -40,8 +40,3 @@ func (a *Record) Annotate(key string, val interface{}) {
 	}
 	a.Annotations[key] = val
 }
-
-
-	
-	
-

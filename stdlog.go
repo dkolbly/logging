@@ -5,8 +5,9 @@ import (
 	"os"
 )
 
-// these implement log.Logger for *Logger
-
+// these "implement" log.Logger for *Logger
+// (meaning that log.Logger is not an interface, but if it *were* these
+// would implement it)
 func (l *Logger) Fatal(args ...interface{}) {
 	l.dispatch(synthesizeFormat(args), args, CRITICAL, baseDepth)
 	os.Exit(1)

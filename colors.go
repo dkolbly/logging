@@ -1,9 +1,9 @@
 package logging
 
 import (
-	"strconv"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -12,7 +12,6 @@ func colorResetFrag(ctx *outputContext) {
 	// count against our columns
 	ctx.dst.Write([]byte("\033[0m"))
 }
-
 
 func makeColorResetFrag(_ string) (fragmentFormatter, error) {
 	return colorResetFrag, nil
@@ -34,13 +33,13 @@ func makeColorFrag(options string) (fragmentFormatter, error) {
 		if options[0] == '=' {
 			return makeFixedColorFrag(options[1:])
 		}
-		
+
 		palette = strings.Split(options, ",")
 		if len(palette) > 8 {
 			return nil, ErrTooManyColors
 		}
 	}
-	
+
 	var colors [8][]byte
 	for i := 0; i < 8; i++ {
 		color := defaultColorPalette[i]

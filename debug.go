@@ -2,8 +2,8 @@ package logging
 
 import (
 	"fmt"
-	"runtime"
 	"path"
+	"runtime"
 )
 
 // SelfDebug is an output used for debugging the logging system itself
@@ -21,8 +21,8 @@ func (std SelfDebug) Write(rec *Record, skip int) {
 	for k, v := range rec.Annotations {
 		fmt.Printf("      %q := %#v\n", k, v)
 	}
-	for i := -skip+2; i < 3; i++ {
-		_, file, line, ok := runtime.Caller(skip+i)
+	for i := -skip + 2; i < 3; i++ {
+		_, file, line, ok := runtime.Caller(skip + i)
 		if ok {
 			fmt.Printf("   [%d+%d] %s:%d\n",
 				skip,
@@ -31,6 +31,5 @@ func (std SelfDebug) Write(rec *Record, skip int) {
 				line)
 		}
 	}
-				
 
 }

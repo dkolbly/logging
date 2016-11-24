@@ -2,8 +2,8 @@ package logging
 
 import (
 	"encoding/json"
-	"runtime"
 	"fmt"
+	"runtime"
 	"time"
 )
 

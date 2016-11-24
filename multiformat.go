@@ -7,7 +7,7 @@ type MultiFormat struct {
 
 func NewMultiFormat(base Formatter, f ...MultiFormatCase) Formatter {
 	return &MultiFormat{
-		options: f,
+		options:  f,
 		fallback: base,
 	}
 }
