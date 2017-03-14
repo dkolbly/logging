@@ -146,3 +146,7 @@ func (l *Logger) Alert(format string, args ...interface{}) {
 func (l *Logger) Warning(format string, args ...interface{}) {
 	l.dispatch(format, args, WARNING, baseDepth)
 }
+
+func (l *Logger) Log(format string, args []interface{}, v Level, depth int) {
+	l.dispatch(format, args, v, baseDepth + depth)
+}
