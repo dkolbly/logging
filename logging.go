@@ -108,6 +108,19 @@ func (l *Logger) In(ctx context.Context) context.Context {
 	return context.WithValue(ctx, CurrentLoggerKey, l)
 }
 
+func (l *Logger) InRe(ctx context.Context) *Logger {
+	ctxlog := ctx.Value(CurrentLoggerKey)
+	if ctxlog == nil {
+		return l
+	}
+	c := ctxlog.(*Logger)
+	return &Logger{
+		module:  l.module,
+		annot:   c.annot,
+		outputs: c.outputs,
+	}
+}
+
 func In(ctx context.Context) *Logger {
 	return ctx.Value(CurrentLoggerKey).(*Logger)
 }
@@ -148,5 +161,5 @@ func (l *Logger) Warning(format string, args ...interface{}) {
 }
 
 func (l *Logger) Log(format string, args []interface{}, v Level, depth int) {
-	l.dispatch(format, args, v, baseDepth + depth)
+	l.dispatch(format, args, v, baseDepth+depth)
 }
