@@ -63,6 +63,10 @@ func (f *LevelFilter) SetLevel(level Level, module string) {
 	// add the rule
 	f.lock.Lock()
 	defer f.lock.Unlock()
+
+	// clear the cache
+	f.threshold = make(map[string]Level)
+
 	// see if there's an exact match, in which case overwrite the levelRule
 	for i, rule := range f.rules {
 		if rule.pattern == module {
@@ -72,6 +76,4 @@ func (f *LevelFilter) SetLevel(level Level, module string) {
 	}
 	f.rules = append(f.rules, levelRule{module, level})
 
-	// clear the cache
-	f.threshold = make(map[string]Level)
 }
