@@ -26,7 +26,7 @@ type StructuredLogRecord struct {
 type StructuredFormatter struct {
 }
 
-func (lf *StructuredFormatter) Format(r *logging.Record, nocolor bool, skip int) []byte {
+func Format(r *logging.Record, skip int) []byte {
 	var lr StructuredLogRecord
 
 	lr.Message = fmt.Sprintf(r.Format, r.Args...)
@@ -47,7 +47,11 @@ func (lf *StructuredFormatter) Format(r *logging.Record, nocolor bool, skip int)
 	if err != nil {
 		return nil
 	}
-	return append(buf, '\n')
+	return buf
+}
+
+func (lf *StructuredFormatter) Format(r *logging.Record, nocolor bool, skip int) []byte {
+	return append(Format(r, skip+1), '\n')
 }
 
 // usage:
