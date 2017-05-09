@@ -224,11 +224,23 @@ func makeIdFrag(options string) (fragmentFormatter, error) {
 	}, nil
 }
 
+type Sourcer interface {
+	File() string
+	Line() int
+}
+
 func makeShortFileFrag(options string) (fragmentFormatter, error) {
 	if options == "" {
 		options = "%[1]s:%[2]d"
 	}
 	return func(ctx *outputContext) {
+		if src, ok := ctx.src.Annotations["source"]; ok {
+			if sourcer, ok := src.(Sourcer); ok {
+				fmt.Fprintf(ctx, options, path.Base(sourcer.File()), sourcer.Line())
+				return
+			}
+		}
+
 		_, file, line, ok := runtime.Caller(ctx.stackSkip)
 		if !ok {
 			file = "???"
